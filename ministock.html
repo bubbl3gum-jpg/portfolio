@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MiniStock — inventory demo</title>
+<meta name="description" content="A live browser demo of MiniStock, a full-stack inventory manager (Node/Express + React + SQLite). This build runs entirely client-side on localStorage.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ---- BubbleBiz theme (mirrors the real app's BubbleBiz.css) ---- */
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Poppins',system-ui,-apple-system,sans-serif;
+    background:linear-gradient(135deg,#63b3ed 0%,#f6e6c5 100%);color:#4a5568;min-height:100vh}
+  a{color:inherit}
+
+  /* demo strip back to portfolio */
+  .demobar{position:fixed;top:0;left:0;right:0;z-index:20;display:flex;justify-content:space-between;align-items:center;
+    gap:12px;padding:9px 18px;background:rgba(0,0,0,.45);backdrop-filter:blur(10px);color:#fff;
+    font-family:'JetBrains Mono',monospace;font-size:.8rem}
+  .demobar a{color:#7BD5F5;text-decoration:none}
+  .demobar a:hover{text-decoration:underline}
+  .demobar .note{opacity:.8}
+  @media(max-width:600px){.demobar .note{display:none}}
+
+  .bubblebiz-page{min-height:100vh;width:100%;display:flex;justify-content:center;align-items:center;padding:64px 16px 32px;box-sizing:border-box}
+  .bubbles{position:fixed;z-index:0;inset:0;pointer-events:none;overflow:hidden}
+  .bubble{position:absolute;border-radius:50%;opacity:.25;background:linear-gradient(135deg,#6dd5ed 0%,#f779a1 100%);animation:float 12s infinite ease-in-out}
+  .bubble1{width:120px;height:120px;left:10vw;top:20vh;animation-delay:0s}
+  .bubble2{width:80px;height:80px;left:70vw;top:10vh;animation-delay:3s}
+  .bubble3{width:60px;height:60px;left:50vw;top:70vh;animation-delay:6s}
+  .bubble4{width:100px;height:100px;left:80vw;top:60vh;animation-delay:2s}
+  @keyframes float{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-30px) scale(1.1)}}
+
+  .bubblebiz-card{width:100%;max-width:1100px;border-radius:24px;padding:32px;background:rgba(0,0,0,.35);
+    backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 24px 60px rgba(0,0,0,.5);
+    color:#fff;position:relative;z-index:1}
+  .bubblebiz-input{background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.15);border-radius:999px;
+    padding:.75rem 1.25rem;font-size:1rem;color:#fff;outline:none;width:100%;box-sizing:border-box}
+  .bubblebiz-input::placeholder{color:rgba(255,255,255,.5)}
+  .bubblebiz-button{background:linear-gradient(90deg,#7BD5F5 0%,#C86DD7 50%,#FF758C 100%);color:#fff;border:none;
+    border-radius:999px;padding:.8rem 2rem;font-size:1rem;font-weight:600;cursor:pointer;transition:transform .1s}
+  .bubblebiz-button:hover{transform:scale(1.05)}
+  table{width:100%;border-collapse:collapse;margin-top:1rem}
+  th,td{padding:12px;text-align:left;border-bottom:1px solid rgba(255,255,255,.1)}
+  select.bubblebiz-input{appearance:auto}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+
+<div class="demobar">
+  <a href="./">&larr; back to portfolio</a>
+  <span class="note">live demo · data is stored in your browser (localStorage) · <a href="#" id="resetLink">reset demo data</a></span>
+</div>
+
+<div class="bubbles">
+  <div class="bubble bubble1"></div><div class="bubble bubble2"></div>
+  <div class="bubble bubble3"></div><div class="bubble bubble4"></div>
+</div>
+
+<div class="bubblebiz-page" id="app"></div>
+
+<script>
+/* ===================================================================
+   MiniStock — client-side demo
+   Mirrors the real Node/Express + React + SQLite app, but swaps the
+   backend for localStorage so it runs anywhere static (GitHub Pages).
+   =================================================================== */
+const KEYS = { users:"ms_demo_users", session:"ms_demo_session", items:e=>"ms_demo_items_"+e };
+const app = document.getElementById("app");
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const now = () => new Date().toISOString();
+
+/* ---- storage helpers ---- */
+const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
+const save = (k, v) => localStorage.setItem(k, JSON.stringify(v));
+
+const SAMPLE = () => ([
+  { id:uid(), name:"Wireless Mouse",      category:"Accessories", stock_quantity:42, restock_level:10, last_updated:now() },
+  { id:uid(), name:"USB-C Cable",         category:"Accessories", stock_quantity:8,  restock_level:15, last_updated:now() },
+  { id:uid(), name:"Mechanical Keyboard", category:"Peripherals", stock_quantity:23, restock_level:8,  last_updated:now() },
+  { id:uid(), name:'27" Monitor',         category:"Displays",    stock_quantity:5,  restock_level:6,  last_updated:now() },
+  { id:uid(), name:"Laptop Stand",        category:"Accessories", stock_quantity:31, restock_level:10, last_updated:now() },
+  { id:uid(), name:"1080p Webcam",        category:"Peripherals", stock_quantity:14, restock_level:12, last_updated:now() },
+  { id:uid(), name:"HDMI Adapter",        category:"Accessories", stock_quantity:3,  restock_level:10, last_updated:now() },
+]);
+function uid(){ return (crypto.randomUUID ? crypto.randomUUID() : "id-"+Math.random().toString(36).slice(2)); }
+
+function seedIfNeeded(){
+  let users = load(KEYS.users, null);
+  if(!users){
+    users = { "demo@example.com": "demopassword" };       // matches the real seeded demo account
+    save(KEYS.users, users);
+    save(KEYS.items("demo@example.com"), SAMPLE());
+  }
+}
+function resetDemo(){
+  Object.keys(localStorage).filter(k=>k.startsWith("ms_demo_")).forEach(k=>localStorage.removeItem(k));
+  seedIfNeeded(); localStorage.removeItem(KEYS.session); state.user=null; state.error=""; state.view="login"; render();
+}
+
+/* ---- app state ---- */
+const state = {
+  view: "login",                 // 'login' | 'register' | 'dashboard'
+  user: load(KEYS.session, null),
+  error: "",
+  search: "",
+  adjustingId: null,
+  adjustMode: "restock",
+};
+if(state.user) state.view = "dashboard";
+
+/* ---- data ops (the "API") ---- */
+const getItems = () => load(KEYS.items(state.user), []);
+const setItems = list => save(KEYS.items(state.user), list);
+
+function authLogin(email, pw){
+  const users = load(KEYS.users, {});
+  if(users[email] === undefined) throw new Error("No account with that email.");
+  if(users[email] !== pw) throw new Error("Incorrect password.");
+  state.user = email; save(KEYS.session, email);
+}
+function authRegister(email, pw){
+  const users = load(KEYS.users, {});
+  if(users[email] !== undefined) throw new Error("That email is already registered.");
+  users[email] = pw; save(KEYS.users, users); save(KEYS.items(email), []);
+}
+function addItem(name, category, restock){
+  const list = getItems();
+  list.unshift({ id:uid(), name, category: category || "Uncategorized",
+    stock_quantity:0, restock_level: parseInt(restock)||0, last_updated:now() });
+  setItems(list);
+}
+function adjustItem(id, change){
+  const list = getItems();
+  const it = list.find(x=>x.id===id);
+  if(it){ it.stock_quantity = Math.max(0, it.stock_quantity + change); it.last_updated = now(); }
+  setItems(list);
+}
+function deleteItem(id){ setItems(getItems().filter(x=>x.id!==id)); }
+function exportCSV(){
+  const rows = [["name","category","stock_quantity","restock_level","last_updated"]];
+  getItems().forEach(i=>rows.push([i.name,i.category,i.stock_quantity,i.restock_level,i.last_updated]));
+  const csv = rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(",")).join("\n");
+  const url = URL.createObjectURL(new Blob([csv], {type:"text/csv"}));
+  const a = document.createElement("a"); a.href=url; a.download="inventory_export.csv"; a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* ---- views ---- */
+function render(){
+  if(state.view === "dashboard" && state.user) renderDashboard();
+  else renderAuth();
+}
+
+function renderAuth(){
+  const isLogin = state.view === "login";
+  app.innerHTML = `
+    <div class="bubblebiz-card" style="max-width:400px">
+      <h1 style="font-size:2rem;margin-bottom:10px;text-align:center">${isLogin ? "MiniStock Login" : "Create Account"}</h1>
+      <p style="text-align:center;margin-bottom:20px;color:rgba(255,255,255,.8);font-size:.9rem">
+        ${isLogin ? "Please sign in to manage your inventory" : "Join us to get started!"}</p>
+      ${state.error ? `<div style="color:#ff8888;text-align:center;margin-bottom:1rem">${esc(state.error)}</div>` : ""}
+      ${isLogin ? `<div style="text-align:center;margin-bottom:1rem;font-size:.82rem;color:#dcfce7">
+        Demo login is pre-filled — just press <b>Sign In</b>.</div>` : ""}
+      <form id="authForm" style="display:flex;flex-direction:column;gap:1rem">
+        <input class="bubblebiz-input" id="email" type="email" placeholder="Email" required
+          value="${isLogin ? "demo@example.com" : ""}">
+        <input class="bubblebiz-input" id="password" type="password" placeholder="Password" required
+          value="${isLogin ? "demopassword" : ""}">
+        <button type="submit" class="bubblebiz-button">${isLogin ? "Sign In" : "Register"}</button>
+      </form>
+      <p style="text-align:center;margin-top:1rem;color:rgba(255,255,255,.7)">
+        ${isLogin ? "New here?" : "Already have an account?"}
+        <button id="toggle" style="background:none;border:none;color:#7BD5F5;cursor:pointer;margin-left:5px;text-decoration:underline">
+          ${isLogin ? "Register" : "Login"}</button>
+      </p>
+    </div>`;
+
+  document.getElementById("authForm").addEventListener("submit", e=>{
+    e.preventDefault(); state.error="";
+    const email = document.getElementById("email").value.trim();
+    const pw = document.getElementById("password").value;
+    try{
+      if(isLogin){ authLogin(email, pw); state.view="dashboard"; }
+      else { authRegister(email, pw); state.view="login"; state.error="Account created! Please log in."; }
+    }catch(err){ state.error = err.message; }
+    render();
+  });
+  document.getElementById("toggle").addEventListener("click", ()=>{
+    state.error=""; state.view = isLogin ? "register" : "login"; render();
+  });
+}
+
+function renderDashboard(){
+  const term = state.search.toLowerCase();
+  const items = getItems().filter(i =>
+    !term || i.name.toLowerCase().includes(term) || i.category.toLowerCase().includes(term));
+
+  const rows = items.map(item => {
+    const low = item.stock_quantity <= item.restock_level;
+    return `<tr style="background:rgba(255,255,255,.02)">
+      <td><strong>${esc(item.name)}</strong></td>
+      <td><span style="background:rgba(255,255,255,.1);padding:2px 8px;border-radius:12px;font-size:.8em">${esc(item.category)}</span></td>
+      <td style="color:${low ? "#ff6b6b" : "white"};font-weight:bold">${item.stock_quantity}${low ? " ⚠" : ""}</td>
+      <td>${item.restock_level}</td>
+      <td style="opacity:.7;font-size:.9em">${new Date(item.last_updated).toLocaleString()}</td>
+      <td style="text-align:right;white-space:nowrap">
+        <button data-adjust="${item.id}" style="margin-right:10px;padding:5px 10px;border-radius:20px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;cursor:pointer">Adjust</button>
+        <button data-delete="${item.id}" data-name="${esc(item.name)}" style="padding:5px 10px;border-radius:20px;border:1px solid rgba(255,100,100,.5);background:rgba(255,0,0,.2);color:#fff;cursor:pointer">Delete</button>
+      </td>
+    </tr>` + (state.adjustingId === item.id ? `
+    <tr><td colspan="6" style="padding:15px;border-bottom:1px solid rgba(255,255,255,.1)">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span>Adjust Stock:</span>
+        <select class="bubblebiz-input" id="adjMode" style="width:auto">
+          <option value="restock"${state.adjustMode==="restock"?" selected":""}>Add Stock (+)</option>
+          <option value="sale"${state.adjustMode==="sale"?" selected":""}>Sale (-)</option>
+        </select>
+        <input class="bubblebiz-input" id="adjQty" style="width:100px" type="number" placeholder="Qty" min="1">
+        <button class="bubblebiz-button" id="adjSave">Save</button>
+      </div></td></tr>` : "");
+  }).join("");
+
+  app.innerHTML = `
+    <div class="bubblebiz-card">
+      <header style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,.1);padding-bottom:20px;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+        <div>
+          <h1 style="margin:0;font-size:2.5rem">MiniStock Inventory</h1>
+          <p style="margin:0;opacity:.8">Signed in as ${esc(state.user)}</p>
+        </div>
+        <div style="display:flex;gap:10px">
+          <button id="exportBtn" class="bubblebiz-button" style="background:rgba(34,197,94,.2);border:1px solid rgba(34,197,94,.5);color:#dcfce7">Export CSV</button>
+          <button id="logoutBtn" class="bubblebiz-button" style="background:rgba(239,68,68,.2);border:1px solid rgba(239,68,68,.5);color:#fee2e2;padding:4px 14px;font-size:.8rem">Exit</button>
+        </div>
+      </header>
+
+      <div style="background:rgba(0,0,0,.3);padding:20px;border-radius:16px;margin-bottom:20px">
+        <h3 style="margin-top:0">Add New Item</h3>
+        <form id="addForm" style="display:flex;flex-wrap:wrap;gap:10px">
+          <input class="bubblebiz-input" id="nName" style="flex:1;min-width:150px" placeholder="Name" required>
+          <input class="bubblebiz-input" id="nCat" style="flex:1;min-width:150px" placeholder="Category">
+          <input class="bubblebiz-input" id="nRestock" style="width:120px" type="number" placeholder="Restock" min="0">
+          <button type="submit" class="bubblebiz-button">Add</button>
+        </form>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:10px">
+        <h3 style="margin:0">Current Items (${items.length})</h3>
+        <input class="bubblebiz-input" id="search" style="width:250px;padding:8px 16px" placeholder="Search..." value="${esc(state.search)}">
+      </div>
+
+      <div style="overflow-x:auto;background:rgba(0,0,0,.3);border-radius:16px">
+        <table>
+          <thead><tr>
+            <th>Name</th><th>Category</th><th>Stock</th><th>Restock Lvl</th><th>Last Updated</th><th style="text-align:right">Actions</th>
+          </tr></thead>
+          <tbody>${rows || `<tr><td colspan="6" style="opacity:.7;padding:20px">No items yet — add one above.</td></tr>`}</tbody>
+        </table>
+      </div>
+    </div>`;
+
+  // wire up
+  document.getElementById("exportBtn").addEventListener("click", exportCSV);
+  document.getElementById("logoutBtn").addEventListener("click", ()=>{
+    localStorage.removeItem(KEYS.session); state.user=null; state.view="login"; state.search=""; render();
+  });
+  document.getElementById("addForm").addEventListener("submit", e=>{
+    e.preventDefault();
+    const name = document.getElementById("nName").value.trim();
+    if(!name) return;
+    addItem(name, document.getElementById("nCat").value.trim(), document.getElementById("nRestock").value);
+    render();
+  });
+  const search = document.getElementById("search");
+  search.addEventListener("input", e=>{
+    state.search = e.target.value; render();
+    const s = document.getElementById("search"); s.focus(); s.setSelectionRange(s.value.length, s.value.length);
+  });
+  app.querySelectorAll("[data-adjust]").forEach(b=>b.addEventListener("click", ()=>{
+    const id = b.getAttribute("data-adjust");
+    state.adjustingId = state.adjustingId === id ? null : id; render();
+  }));
+  app.querySelectorAll("[data-delete]").forEach(b=>b.addEventListener("click", ()=>{
+    if(confirm(`Delete ${b.getAttribute("data-name")}?`)){ deleteItem(b.getAttribute("data-delete")); render(); }
+  }));
+  const adjSave = document.getElementById("adjSave");
+  if(adjSave){
+    document.getElementById("adjMode").addEventListener("change", e=>state.adjustMode=e.target.value);
+    adjSave.addEventListener("click", ()=>{
+      const v = parseInt(document.getElementById("adjQty").value);
+      if(!v || v<=0) return;
+      adjustItem(state.adjustingId, state.adjustMode==="sale" ? -v : v);
+      state.adjustingId = null; render();
+    });
+  }
+}
+
+/* ---- boot ---- */
+document.getElementById("resetLink").addEventListener("click", e=>{ e.preventDefault(); if(confirm("Reset all demo data?")) resetDemo(); });
+seedIfNeeded();
+render();
+</script>
+
+</body>
+</html>
