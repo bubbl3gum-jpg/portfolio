@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- EDIT ME: change "Your Name" to your real name -->
+<title>Your Name — Developer Portfolio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#16181d; --surface:#1e2128; --surface-2:#23262e; --line:#2c303a;
+    --text:#e7e7e2; --muted:#9aa0a6; --accent:#ff7849; --accent-dim:rgba(255,120,73,.14);
+    --radius:14px; --maxw:920px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--text);font-family:"Inter",system-ui,sans-serif;line-height:1.6;-webkit-font-smoothing:antialiased}
+  a{color:inherit;text-decoration:none}
+  ::selection{background:var(--accent-dim)}
+
+  nav{position:sticky;top:0;z-index:50;display:flex;justify-content:space-between;align-items:center;
+    padding:18px clamp(20px,5vw,48px);background:rgba(22,24,29,.78);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .brand{font-family:"JetBrains Mono",monospace;font-size:.9rem;color:var(--accent)}
+  .nav-links{display:flex;gap:24px;font-size:.9rem;color:var(--muted)}
+  .nav-links a{transition:color .2s}
+  .nav-links a:hover,.nav-links a:focus-visible{color:var(--text)}
+  @media(max-width:560px){.nav-links{display:none}}
+
+  section{max-width:var(--maxw);margin:0 auto;padding:96px clamp(20px,5vw,48px)}
+  .eyebrow{font-family:"JetBrains Mono",monospace;font-size:.78rem;color:var(--accent);letter-spacing:.04em;margin-bottom:18px;display:block}
+  h2{font-family:"Space Grotesk",sans-serif;font-size:clamp(1.6rem,4vw,2.2rem);font-weight:600;margin-bottom:28px}
+
+  .hero{padding-top:120px;padding-bottom:80px}
+  .terminal-line{font-family:"JetBrains Mono",monospace;color:var(--muted);font-size:.95rem;margin-bottom:24px}
+  .terminal-line .accent{color:var(--accent)}
+  .cursor{display:inline-block;width:9px;height:1.1em;background:var(--accent);transform:translateY(2px);margin-left:2px;animation:blink 1.1s steps(1) infinite}
+  @keyframes blink{50%{opacity:0}}
+  .hero h1{font-family:"Space Grotesk",sans-serif;font-size:clamp(2.4rem,8vw,4.2rem);font-weight:700;line-height:1.05;letter-spacing:-.02em;margin-bottom:22px}
+  .hero .tagline{font-size:clamp(1.05rem,3vw,1.3rem);color:var(--muted);max-width:600px;margin-bottom:36px}
+  .cta-row{display:flex;gap:14px;flex-wrap:wrap}
+  .btn{font-family:"JetBrains Mono",monospace;font-size:.88rem;padding:12px 22px;border-radius:10px;border:1px solid var(--line);transition:transform .15s,border-color .2s,background .2s;cursor:pointer}
+  .btn-primary{background:var(--accent);color:#16181d;border-color:var(--accent);font-weight:500}
+  .btn:hover,.btn:focus-visible{transform:translateY(-2px)}
+  .btn-ghost:hover,.btn-ghost:focus-visible{border-color:var(--accent);color:var(--accent)}
+
+  .about p{color:var(--muted);max-width:620px;margin-bottom:28px}
+  .edu{font-family:"JetBrains Mono",monospace;font-size:.9rem;color:var(--text);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 18px;display:inline-block;margin-bottom:32px}
+  .edu .accent{color:var(--accent)}
+  .stack{display:flex;flex-wrap:wrap;gap:10px}
+  .tag{font-family:"JetBrains Mono",monospace;font-size:.8rem;padding:6px 14px;border-radius:8px;background:var(--surface);border:1px solid var(--line);color:var(--text)}
+
+  .projects-grid{display:grid;gap:20px}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:28px;transition:transform .2s,border-color .2s}
+  .card:hover{transform:translateY(-3px);border-color:var(--accent)}
+  .card h3{font-family:"Space Grotesk",sans-serif;font-size:1.25rem;font-weight:600;margin-bottom:12px}
+  .card p{color:var(--muted);font-size:.96rem;margin-bottom:18px}
+  .card-stack{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
+  .card-stack span{font-family:"JetBrains Mono",monospace;font-size:.74rem;color:var(--muted)}
+  .card-stack span::before{content:"#";color:var(--accent);opacity:.6}
+  .card-links{display:flex;gap:18px;font-family:"JetBrains Mono",monospace;font-size:.84rem}
+  .card-links a{color:var(--accent);transition:opacity .2s}
+  .card-links a:hover,.card-links a:focus-visible{opacity:.7;text-decoration:underline}
+
+  .contact{text-align:center;border-top:1px solid var(--line);max-width:none;background:var(--surface-2)}
+  .contact-inner{max-width:var(--maxw);margin:0 auto}
+  .contact h2{margin-bottom:16px}
+  .contact p{color:var(--muted);margin-bottom:32px}
+  .contact-links{display:flex;justify-content:center;gap:28px;flex-wrap:wrap;font-family:"JetBrains Mono",monospace;font-size:.92rem}
+  .contact-links a{color:var(--text);transition:color .2s}
+  .contact-links a:hover,.contact-links a:focus-visible{color:var(--accent)}
+  footer{text-align:center;padding:30px;color:var(--muted);font-size:.82rem;font-family:"JetBrains Mono",monospace}
+
+  .reveal{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease}
+  .reveal.in{opacity:1;transform:none}
+  @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.reveal{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+
+<nav>
+  <!-- EDIT ME: your name or handle -->
+  <span class="brand">stephen</span>
+  <div class="nav-links">
+    <a href="#about">about</a>
+    <a href="#projects">projects</a>
+    <a href="#contact">contact</a>
+  </div>
+</nav>
+
+<!-- ============================ HERO ============================ -->
+<section class="hero">
+  <p class="terminal-line">$ whoami<br><span class="accent">&rarr;</span> student. builder. always shipping.</p>
+  <!-- EDIT ME: your name -->
+  <h1>Your Name<span class="cursor"></span></h1>
+  <!-- This student-focused tagline is ready to use; tweak if you like -->
+  <p class="tagline">Computer science student who builds real applications &mdash; from full-stack ERP systems to containerized deployments on Kubernetes.</p>
+  <div class="cta-row">
+    <a class="btn btn-primary" href="#projects">view my work</a>
+    <a class="btn btn-ghost" href="#contact">get in touch</a>
+  </div>
+</section>
+
+<!-- ============================ ABOUT ============================ -->
+<section id="about" class="about reveal">
+  <span class="eyebrow">// about</span>
+  <h2>Who I am</h2>
+  <!-- This is ready to use; adjust to sound like you -->
+  <p>I'm a computer science student who learns by building. I'm comfortable working across the stack with JavaScript and Python, and I've been getting hands-on with containers and orchestration using Docker and Kubernetes. I like taking a problem from a blank file all the way to something that actually runs &mdash; and I'm looking for an entry-level role or internship where I can keep doing exactly that.</p>
+  <!-- EDIT ME: your degree, school, and expected graduation year -->
+  <p class="edu"><span class="accent">&#127891;</span>&nbsp; B.S. in Computer Science, [Your University] &middot; Expected [Year]</p>
+  <span class="eyebrow">// stack</span>
+  <!-- EDIT ME: add/remove to match what you actually use. Replace [Database] with yours. -->
+  <div class="stack">
+    <span class="tag">JavaScript</span>
+    <span class="tag">Python</span>
+    <span class="tag">Node.js</span>
+    <span class="tag">Express</span>
+    <span class="tag">React</span>
+    <span class="tag">HTML</span>
+    <span class="tag">CSS</span>
+    <span class="tag">SQLite</span>
+    <span class="tag">Docker</span>
+    <span class="tag">Kubernetes</span>
+    <span class="tag">MicroK8s</span>
+    <span class="tag">Git</span>
+  </div>
+</section>
+
+<!-- ============================ PROJECTS ============================ -->
+<section id="projects" class="reveal">
+  <span class="eyebrow">// selected work</span>
+  <h2>Projects</h2>
+  <div class="projects-grid">
+
+    <!-- ---------- PROJECT 1: Blackjack on Kubernetes (your strongest, so it leads) ---------- -->
+    <article class="card">
+      <h3>Blackjack on Kubernetes</h3>
+      <p>A playable blackjack game written in Python (Flask), containerized with Docker and deployed on a self-managed Kubernetes cluster using MicroK8s &mdash; the whole deployment defined as YAML manifests. An nginx ingress with sticky sessions keeps each player pinned to one pod, while a HorizontalPodAutoscaler scales the dealer from 1 to 10 replicas as CPU load climbs, with liveness and readiness probes on a <code>/health</code> endpoint.</p>
+      <div class="card-stack">
+        <span>Python</span><span>Flask</span><span>Kubernetes</span><span>MicroK8s</span><span>Docker</span><span>YAML</span>
+      </div>
+      <div class="card-links">
+        <!-- A live, playable browser version (blackjack.html) ships alongside this page -->
+        <a href="blackjack.html" target="_blank" rel="noopener">play demo &#8599;</a>
+        <a href="https://github.com/bubbl3gum-jpg/blackjack-k8s" target="_blank" rel="noopener">source &#8599;</a>
+      </div>
+    </article>
+
+    <!-- ---------- PROJECT 2: Mini ERP ---------- -->
+    <article class="card">
+      <h3>Mini ERP System</h3>
+      <p>A full-stack inventory management system built as a school project: a Node/Express REST API secured with JWT auth (bcrypt-hashed passwords), a React front end, and a SQLite database. It covers user accounts, item management, live stock adjustments (restock and consume), search, and CSV export &mdash; full CRUD from end to end.</p>
+      <div class="card-stack">
+        <span>Node.js</span><span>Express</span><span>React</span><span>SQLite</span><span>JWT</span>
+      </div>
+      <div class="card-links">
+        <!-- EDIT ME: live URL — gets filled in automatically once the Render deploy is live -->
+        <a href="#" target="_blank" rel="noopener">live demo &#8599;</a>
+        <!-- Repo is currently PRIVATE — make it public for this link to work for visitors -->
+        <a href="https://github.com/bubbl3gum-jpg/ministock" target="_blank" rel="noopener">source &#8599;</a>
+      </div>
+    </article>
+
+    <!-- When the large ERP is finished, copy a card block above and add it here. -->
+
+  </div>
+</section>
+
+<!-- ============================ CONTACT ============================ -->
+<section id="contact" class="contact reveal">
+  <div class="contact-inner">
+    <span class="eyebrow">// contact</span>
+    <h2>Let's build something</h2>
+    <p>Open to entry-level roles and internships. The fastest way to reach me is email.</p>
+    <div class="contact-links">
+      <!-- EDIT ME: your real links -->
+      <!-- EDIT ME: your contact email -->
+      <a href="mailto:you@email.com">email</a>
+      <a href="https://github.com/bubbl3gum-jpg" target="_blank" rel="noopener">github</a>
+      <!-- EDIT ME: your LinkedIn username -->
+      <a href="https://linkedin.com/in/yourusername" target="_blank" rel="noopener">linkedin</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <!-- EDIT ME -->
+  built by Your Name &middot; 2026
+</footer>
+
+<script>
+  const obs = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); obs.unobserve(e.target);} });
+  },{threshold:.12});
+  document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
+</script>
+
+</body>
+</html>

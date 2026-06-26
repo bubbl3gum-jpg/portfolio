@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blackjack on Kubernetes — playable demo</title>
+<meta name="description" content="A playable browser blackjack game with a live Kubernetes cluster panel, modeled on a real Python game deployed on MicroK8s.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#16181d; --surface:#1e2128; --surface-2:#23262e; --line:#2c303a;
+    --text:#e7e7e2; --muted:#9aa0a6; --accent:#ff7849; --accent-dim:rgba(255,120,73,.14);
+    --green:#4ade80; --red:#f87171; --felt:#1d3a2f; --felt-line:#2c5141;
+    --radius:14px; --maxw:1180px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--text);font-family:"Inter",system-ui,sans-serif;line-height:1.6;-webkit-font-smoothing:antialiased}
+  a{color:inherit;text-decoration:none}
+  ::selection{background:var(--accent-dim)}
+
+  nav{position:sticky;top:0;z-index:50;display:flex;justify-content:space-between;align-items:center;
+    padding:16px clamp(20px,5vw,48px);background:rgba(22,24,29,.82);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .brand{font-family:"JetBrains Mono",monospace;font-size:.9rem;color:var(--accent)}
+  .back{font-family:"JetBrains Mono",monospace;font-size:.85rem;color:var(--muted);transition:color .2s}
+  .back:hover,.back:focus-visible{color:var(--text)}
+
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:40px clamp(20px,5vw,48px) 60px}
+  .head{margin-bottom:32px}
+  .eyebrow{font-family:"JetBrains Mono",monospace;font-size:.78rem;color:var(--accent);letter-spacing:.04em;display:block;margin-bottom:10px}
+  h1{font-family:"Space Grotesk",sans-serif;font-size:clamp(1.8rem,5vw,2.6rem);font-weight:700;letter-spacing:-.02em;margin-bottom:10px}
+  .sub{color:var(--muted);max-width:620px}
+
+  .layout{display:grid;grid-template-columns:1fr 380px;gap:24px;align-items:start}
+  @media(max-width:880px){.layout{grid-template-columns:1fr}}
+
+  /* ---------- TABLE ---------- */
+  .table{background:radial-gradient(120% 90% at 50% 0%,var(--felt-line),var(--felt));border:1px solid var(--line);
+    border-radius:var(--radius);padding:24px clamp(16px,3vw,32px) 28px;min-height:460px;position:relative;overflow:hidden}
+  .table::after{content:"";position:absolute;inset:14px;border:1px solid rgba(255,255,255,.05);border-radius:10px;pointer-events:none}
+  .seat{margin-bottom:18px}
+  .seat-label{font-family:"JetBrains Mono",monospace;font-size:.78rem;color:rgba(231,231,226,.7);display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  .pill{background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.08);border-radius:999px;padding:2px 10px;color:var(--text);font-size:.72rem}
+  .hand{display:flex;gap:10px;flex-wrap:wrap;min-height:104px}
+
+  .card{width:72px;height:100px;border-radius:9px;background:#f6f5f0;color:#16181d;position:relative;flex:0 0 auto;
+    box-shadow:0 6px 16px rgba(0,0,0,.35);display:flex;flex-direction:column;justify-content:space-between;padding:7px 9px;
+    font-family:"Space Grotesk",sans-serif;animation:deal .32s ease both}
+  .card.red{color:#c0392b}
+  .card .r{font-size:1.05rem;font-weight:700;line-height:1}
+  .card .s{font-size:1.15rem;line-height:1}
+  .card .center{position:absolute;inset:0;display:grid;place-items:center;font-size:1.7rem}
+  .card .br{align-self:flex-end;transform:rotate(180deg)}
+  .card.back{background:repeating-linear-gradient(45deg,#2d3a8c,#2d3a8c 6px,#3a49a8 6px,#3a49a8 12px);color:transparent}
+  .card.back::after{content:"☸";position:absolute;inset:0;display:grid;place-items:center;color:rgba(255,255,255,.5);font-size:1.6rem}
+  @keyframes deal{from{opacity:0;transform:translateY(-18px) rotate(-4deg)}to{opacity:1;transform:none}}
+
+  .status{text-align:center;margin:6px 0 18px;min-height:30px;font-family:"JetBrains Mono",monospace;font-size:.95rem}
+  .status .win{color:var(--green)} .status .lose{color:var(--red)} .status .push{color:var(--accent)}
+
+  .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center}
+  .btn{font-family:"JetBrains Mono",monospace;font-size:.86rem;padding:11px 20px;border-radius:10px;border:1px solid var(--line);
+    background:var(--surface);color:var(--text);cursor:pointer;transition:transform .15s,border-color .2s,background .2s,opacity .2s}
+  .btn:hover:not(:disabled),.btn:focus-visible:not(:disabled){transform:translateY(-2px);border-color:var(--accent);color:var(--accent)}
+  .btn-primary{background:var(--accent);color:#16181d;border-color:var(--accent);font-weight:600}
+  .btn-primary:hover:not(:disabled){color:#16181d}
+  .btn:disabled{opacity:.35;cursor:not-allowed}
+
+  .bankroll{display:flex;justify-content:center;gap:22px;margin:16px 0 4px;font-family:"JetBrains Mono",monospace;font-size:.84rem}
+  .bankroll b{color:var(--accent)}
+  .chips{display:flex;gap:8px;justify-content:center;margin:14px 0 6px}
+  .chip{width:48px;height:48px;border-radius:50%;border:2px dashed rgba(255,255,255,.4);background:var(--surface-2);color:var(--text);
+    font-family:"JetBrains Mono",monospace;font-size:.8rem;cursor:pointer;transition:transform .15s,border-color .2s}
+  .chip:hover:not(:disabled){transform:translateY(-3px);border-color:var(--accent)}
+  .chip.sel{border-style:solid;border-color:var(--accent);color:var(--accent)}
+  .chip:disabled{opacity:.35;cursor:not-allowed}
+
+  /* ---------- K8S PANEL ---------- */
+  .panel{background:#0d0f13;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;font-family:"JetBrains Mono",monospace}
+  .panel-bar{display:flex;align-items:center;gap:8px;padding:11px 14px;background:var(--surface);border-bottom:1px solid var(--line)}
+  .dot{width:11px;height:11px;border-radius:50%}
+  .dot.r{background:#ff5f56}.dot.y{background:#ffbd2e}.dot.g{background:#27c93f}
+  .panel-bar .ttl{margin-left:8px;font-size:.78rem;color:var(--muted)}
+  .panel-body{padding:14px;font-size:.74rem;line-height:1.65;color:#cdd2d8}
+  .panel-body .c{color:var(--muted)}            /* comment */
+  .panel-body .k{color:var(--accent)}           /* command / key */
+  .panel-body .ok{color:var(--green)}
+  .panel-body .warn{color:#fbbf24}
+  .panel h4{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:16px 0 6px;font-weight:500}
+  .panel h4:first-child{margin-top:0}
+  table.kt{width:100%;border-collapse:collapse;font-size:.72rem}
+  table.kt th{text-align:left;color:var(--muted);font-weight:500;padding:2px 8px 4px 0;border-bottom:1px solid var(--line)}
+  table.kt td{padding:3px 8px 3px 0;color:#cdd2d8}
+  .run{color:var(--green)}
+  .podbar{display:flex;gap:5px;margin:8px 0 2px;flex-wrap:wrap}
+  .pod{width:13px;height:13px;border-radius:3px;background:var(--green);box-shadow:0 0 6px rgba(74,222,128,.5);animation:pulse 2.4s ease-in-out infinite}
+  .pod.cold{background:var(--line);box-shadow:none;animation:none}
+  @keyframes pulse{50%{opacity:.55}}
+  .log{background:#000;border:1px solid var(--line);border-radius:8px;padding:9px 11px;margin-top:8px;height:120px;overflow-y:auto;font-size:.68rem;line-height:1.7}
+  .log div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .log .m{color:var(--accent)}
+  .meter{height:6px;background:var(--surface-2);border-radius:999px;overflow:hidden;margin-top:6px}
+  .meter > i{display:block;height:100%;background:var(--accent);width:8%;transition:width .5s ease}
+
+  footer{text-align:center;padding:30px;color:var(--muted);font-size:.8rem;font-family:"JetBrains Mono",monospace}
+</style>
+</head>
+<body>
+
+<nav>
+  <!-- EDIT ME: your name or handle (keep it matching portfolioWebsite.html) -->
+  <span class="brand">stephen</span>
+  <a class="back" href="./">&larr; back to portfolio</a>
+</nav>
+
+<div class="wrap">
+  <div class="head">
+    <span class="eyebrow">// playable demo</span>
+    <h1>Blackjack on Kubernetes</h1>
+    <p class="sub">A browser build of my Python blackjack game. The panel on the right mirrors the real
+    MicroK8s deployment it runs on &mdash; deployment, ClusterIP service, nginx ingress with sticky sessions,
+    and a horizontal pod autoscaler. Every action you take is logged as a request routed to the
+    <code>blackjack-dealer</code> pods.</p>
+  </div>
+
+  <div class="layout">
+    <!-- ===================== GAME TABLE ===================== -->
+    <section class="table" aria-label="Blackjack table">
+      <div class="seat">
+        <div class="seat-label">DEALER <span class="pill" id="dealerScore">—</span></div>
+        <div class="hand" id="dealerHand"></div>
+      </div>
+
+      <div class="status" id="status">Place a bet and press <b>Deal</b>.</div>
+
+      <div class="seat">
+        <div class="seat-label">YOU <span class="pill" id="playerScore">—</span></div>
+        <div class="hand" id="playerHand"></div>
+      </div>
+
+      <div class="bankroll">
+        <span>balance: <b id="balance">500</b></span>
+        <span>bet: <b id="bet">0</b></span>
+      </div>
+
+      <div class="chips" id="chips">
+        <button class="chip" data-v="10">+10</button>
+        <button class="chip" data-v="25">+25</button>
+        <button class="chip" data-v="50">+50</button>
+        <button class="chip" data-v="100">+100</button>
+      </div>
+
+      <div class="controls">
+        <button class="btn btn-primary" id="dealBtn">Deal</button>
+        <button class="btn" id="hitBtn" disabled>Hit</button>
+        <button class="btn" id="standBtn" disabled>Stand</button>
+        <button class="btn" id="doubleBtn" disabled>Double</button>
+        <button class="btn" id="clearBtn">Clear bet</button>
+      </div>
+    </section>
+
+    <!-- ===================== K8S PANEL ===================== -->
+    <aside class="panel" aria-label="Kubernetes cluster status">
+      <div class="panel-bar">
+        <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+        <span class="ttl">kubectl — microk8s — blackjack</span>
+      </div>
+      <div class="panel-body">
+        <div><span class="k">$</span> kubectl get pods -l app=blackjack-dealer</div>
+        <div class="podbar" id="podbar"></div>
+        <div class="c"># <span id="podCount">1</span> running &middot; image localhost:32000/blackjack-dealer:v4</div>
+
+        <h4>Deployment</h4>
+        <table class="kt">
+          <tr><th>NAME</th><th>READY</th><th>STATUS</th></tr>
+          <tr><td>blackjack-deployment</td><td id="ready">1/1</td><td class="run">Running</td></tr>
+        </table>
+
+        <h4>Service &amp; Ingress</h4>
+        <table class="kt">
+          <tr><th>KIND</th><th>EXPOSE</th></tr>
+          <tr><td>blackjack-service</td><td>ClusterIP 80&rarr;5000</td></tr>
+          <tr><td>blackjack-ingress</td><td>nginx · sticky</td></tr>
+        </table>
+
+        <h4>HorizontalPodAutoscaler</h4>
+        <div class="c">target CPU 80% · min 1 · max 10</div>
+        <div class="meter"><i id="cpuBar"></i></div>
+        <div class="c" style="margin-top:4px">cpu: <span id="cpu">8</span>% &middot; replicas <span id="hpaRep">1</span>/10</div>
+
+        <h4>Request log</h4>
+        <div class="log" id="log"></div>
+      </div>
+    </aside>
+  </div>
+
+  <p style="margin-top:26px;font-family:'JetBrains Mono',monospace;font-size:.82rem;color:var(--muted)">
+    source &amp; manifests &rarr; <a href="https://github.com/bubbl3gum-jpg/blackjack-k8s" style="color:var(--accent)" target="_blank" rel="noopener">github.com/bubbl3gum-jpg/blackjack-k8s</a>
+  </p>
+</div>
+
+<footer>
+  <!-- EDIT ME -->
+  built by Your Name &middot; 2026 &middot; deployed the hard way, on Kubernetes
+</footer>
+
+<script>
+/* ===================== Blackjack engine ===================== */
+const SUITS = [{s:"♠",red:false},{s:"♥",red:true},{s:"♦",red:true},{s:"♣",red:false}];
+const RANKS = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
+const $ = id => document.getElementById(id);
+
+let deck = [], player = [], dealer = [], balance = 500, bet = 0;
+let inRound = false, dealerHidden = true, doubled = false;
+
+function buildShoe(){
+  deck = [];
+  for(let d=0; d<4; d++)                       // 4-deck shoe
+    for(const su of SUITS)
+      for(const r of RANKS) deck.push({r, ...su});
+  // Fisher–Yates
+  for(let i=deck.length-1; i>0; i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [deck[i],deck[j]] = [deck[j],deck[i]];
+  }
+}
+function draw(){ if(deck.length < 15) buildShoe(); return deck.pop(); }
+
+function handValue(cards){
+  let total = 0, aces = 0;
+  for(const c of cards){
+    if(c.r === "A"){ aces++; total += 11; }
+    else if(["K","Q","J"].includes(c.r)) total += 10;
+    else total += +c.r;
+  }
+  while(total > 21 && aces > 0){ total -= 10; aces--; }
+  return total;
+}
+const isBlackjack = c => c.length === 2 && handValue(c) === 21;
+
+/* ===================== Rendering ===================== */
+function cardHTML(c){
+  return `<div class="card ${c.red?'red':''}">
+      <div class="r">${c.r}<span class="s">${c.s}</span></div>
+      <div class="center">${c.s}</div>
+      <div class="r br">${c.r}<span class="s">${c.s}</span></div>
+    </div>`;
+}
+function render(){
+  $("playerHand").innerHTML = player.map(cardHTML).join("");
+  $("dealerHand").innerHTML = dealer.map((c,i) =>
+     (i === 1 && dealerHidden) ? `<div class="card back"></div>` : cardHTML(c)
+  ).join("");
+  $("playerScore").textContent = player.length ? handValue(player) : "—";
+  $("dealerScore").textContent = dealer.length
+     ? (dealerHidden ? handValue([dealer[0]]) + " + ?" : handValue(dealer))
+     : "—";
+  $("balance").textContent = balance;
+  $("bet").textContent = bet;
+}
+function setStatus(msg, cls=""){ $("status").innerHTML = cls ? `<span class="${cls}">${msg}</span>` : msg; }
+
+function buttons({deal,hit,stand,dbl,chips}){
+  $("dealBtn").disabled = !deal;
+  $("hitBtn").disabled = !hit;
+  $("standBtn").disabled = !stand;
+  $("doubleBtn").disabled = !dbl;
+  document.querySelectorAll(".chip").forEach(c => c.disabled = !chips);
+  $("clearBtn").disabled = !chips || bet === 0;
+}
+
+/* ===================== Round flow ===================== */
+function deal(){
+  if(bet <= 0){ setStatus("Add chips to place a bet first.", "push"); return; }
+  inRound = true; dealerHidden = true; doubled = false;
+  player = [draw(), draw()];
+  dealer = [draw(), draw()];
+  k8sRequest("POST", "/deal");
+  render();
+  buttons({deal:false, hit:true, stand:true, dbl: balance >= bet, chips:false});
+  setStatus("Hit, Stand, or Double.");
+
+  if(isBlackjack(player) || isBlackjack(dealer)){
+    dealerHidden = false; render();
+    if(isBlackjack(player) && isBlackjack(dealer)) settle("push");
+    else if(isBlackjack(player)) settle("blackjack");
+    else settle("lose");
+  }
+}
+function hit(){
+  player.push(draw());
+  k8sRequest("POST", "/hit");
+  render();
+  $("doubleBtn").disabled = true;            // can't double after hitting
+  if(handValue(player) > 21){ dealerHidden = false; render(); settle("bust"); }
+}
+function doubleDown(){
+  if(balance < bet) return;
+  balance -= bet; bet *= 2; doubled = true;
+  k8sRequest("POST", "/double");
+  player.push(draw()); render();
+  if(handValue(player) > 21){ dealerHidden = false; render(); settle("bust"); }
+  else stand();
+}
+function stand(){
+  dealerHidden = false;
+  k8sRequest("POST", "/stand");
+  while(handValue(dealer) < 17){ dealer.push(draw()); }   // dealer stands on all 17
+  render();
+  const p = handValue(player), d = handValue(dealer);
+  if(d > 21) settle("win");
+  else if(d > p) settle("lose");
+  else if(d < p) settle("win");
+  else settle("push");
+}
+
+function settle(result){
+  inRound = false;
+  let delta = 0, msg = "", cls = "";
+  switch(result){
+    case "blackjack": delta = Math.floor(bet * 1.5); msg = `Blackjack! +${delta}`; cls = "win"; break;
+    case "win":       delta = bet;       msg = `You win +${delta}`; cls = "win"; break;
+    case "lose":      delta = -bet;      msg = `Dealer wins ${delta}`; cls = "lose"; break;
+    case "bust":      delta = -bet;      msg = `Bust! ${delta}`; cls = "lose"; break;
+    case "push":      delta = 0;         msg = "Push — bet returned"; cls = "push"; break;
+  }
+  if(result === "blackjack" || result === "win") balance += bet + delta;  // return stake + winnings
+  else if(result === "push") balance += bet;                              // return stake
+  // (lose/bust: stake already deducted at bet time)
+  setStatus(msg + ` · dealer ${handValue(dealer)} vs you ${handValue(player)}`, cls);
+  k8sLogResult(result);
+  bet = 0; render();
+  const broke = balance <= 0;
+  if(broke){ balance = 500; setStatus(msg + " · busted out — bankroll reset to 500", cls); }
+  buttons({deal:false, hit:false, stand:false, dbl:false, chips:true});
+}
+
+/* ===================== Betting ===================== */
+function addChip(v){
+  if(inRound) return;
+  if(balance - bet < v){ setStatus("Not enough balance for that chip.", "push"); return; }
+  bet += v; render();
+  buttons({deal:true, hit:false, stand:false, dbl:false, chips:true});
+}
+function clearBet(){ if(inRound) return; bet = 0; render(); buttons({deal:false,hit:false,stand:false,dbl:false,chips:true}); }
+function placeStake(){ /* stake is moved out of balance when Deal is pressed */ }
+
+/* ===================== K8s panel (cosmetic, tied to gameplay) ===================== */
+let cpu = 8, replicas = 1, octet = 30;
+function renderPods(){
+  let html = "";
+  for(let i=0;i<10;i++) html += `<span class="pod ${i<replicas?'':'cold'}"></span>`;
+  $("podbar").innerHTML = html;
+  $("podCount").textContent = replicas;
+  $("ready").textContent = `${replicas}/${replicas}`;
+  $("hpaRep").textContent = replicas;
+  $("cpu").textContent = Math.round(cpu);
+  $("cpuBar").style.width = Math.min(100, cpu) + "%";
+}
+function logLine(html){
+  const log = $("log");
+  const d = document.createElement("div");
+  d.innerHTML = html;
+  log.appendChild(d);
+  while(log.children.length > 60) log.removeChild(log.firstChild);
+  log.scrollTop = log.scrollHeight;
+}
+function k8sRequest(method, path){
+  // each action spikes CPU; the HPA reacts and may add a replica
+  cpu = Math.min(98, cpu + 14 + Math.floor(handValue(player||[]) % 9));
+  if(cpu > 80 && replicas < 10){ replicas++; logLine(`<span class="warn">hpa</span> cpu>80% → scaled to ${replicas} replicas`); }
+  const ip = `10.1.${replicas}.${octet = (octet % 250) + 1}`;
+  logLine(`<span class="m">${ip}</span> - "${method} ${path}" 200 <span class="c">→ pod-${(octet%replicas)+1}</span>`);
+  renderPods();
+}
+function k8sLogResult(result){
+  logLine(`<span class="c"># round settled: ${result}</span>`);
+}
+// idle loop: CPU cools down, HPA scales pods back toward 1 (min replicas)
+setInterval(() => {
+  if(cpu > 8) cpu = Math.max(8, cpu - 4);
+  if(cpu < 35 && replicas > 1 && !inRound){ replicas--; logLine(`<span class="c">hpa</span> cpu<35% → scaled down to ${replicas}`); }
+  renderPods();
+}, 2600);
+
+/* ===================== Wire up ===================== */
+$("dealBtn").addEventListener("click", () => { balance -= bet; placeStake(); deal(); });
+$("hitBtn").addEventListener("click", hit);
+$("standBtn").addEventListener("click", stand);
+$("doubleBtn").addEventListener("click", doubleDown);
+$("clearBtn").addEventListener("click", clearBet);
+document.querySelectorAll(".chip").forEach(c =>
+  c.addEventListener("click", () => addChip(+c.dataset.v)));
+
+buildShoe();
+renderPods();
+render();
+buttons({deal:false, hit:false, stand:false, dbl:false, chips:true});
+logLine('<span class="c"># cluster ready — waiting for play…</span>');
+</script>
+
+</body>
+</html>
